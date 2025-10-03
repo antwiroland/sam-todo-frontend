@@ -16,7 +16,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true)
 
     try {
-      await register(password, email)
+      await register(email, password) 
       alert("Registration successful! Please confirm your email before logging in.")
       navigate('/login')  // ✅ Navigate to login page
     } catch (err: any) {

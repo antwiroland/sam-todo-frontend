@@ -60,27 +60,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const register = async (email: string, password: string) => {
-    try {
-      const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password, email }),
-      })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Registration failed')
-      }
+const register = async (email: string, password: string) => {
+  try {
+    const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-      const data = await response.json()
-      console.log('Registration success:', data)
-    } catch (error) {
-      console.error('Registration error:', error)
-      throw error
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Registration failed')
     }
-  }
 
+    const data = await response.json()
+    console.log('Registration success:', data)
+  } catch (error) {
+    console.error('Registration error:', error)
+    throw error
+  }
+}
   const confirm = async (username: string, code: string) => {
     try {
       const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/confirm`, {
