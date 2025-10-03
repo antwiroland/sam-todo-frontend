@@ -4,40 +4,53 @@ import { useAuth } from '../provider/AuthProvider'
 interface Task {
   TaskName: string
   UserId: string
-  Status: string
+  Status: 'Pending' | 'Completed' | 'Expired'
   TaskId: string
   UserEmail: string
   CreatedAt: string
   ExpiryDate?: string
 }
 
+
 const TodoPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTask, setNewTask] = useState('')
-  const [expiryDate, setExpiryDate] = useState('') // manual expiration date
+  const [expiryDate, setExpiryDate] = useState('')
   const [loading, setLoading] = useState(false)
   const { tokens, logout, isAuthenticated } = useAuth()
 
-  // Fetch all tasks for the logged-in user
+  // Fetch all tasks
   const fetchTasks = async () => {
     if (!tokens?.idToken) return
     try {
       setLoading(true)
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/tasks`, {
         headers: {
-          'Authorization': `Bearer ${tokens.idToken}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${tokens.idToken}`,
+          'Content-Type': 'application/json',
+        },
       })
+
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(`Failed to fetch tasks: ${response.status} ${errorText}`)
       }
+
       const data = await response.json()
-      setTasks(data.tasks || [])
+      const now = Date.now()
+
+      // Automatically mark tasks as expired if past expiry date
+      const updatedTasks = (data.tasks || []).map((task: Task) => {
+        if (task.ExpiryDate && new Date(task.ExpiryDate).getTime() < now) {
+          return { ...task, Status: 'Expired' }
+        }
+        return task
+      })
+
+      setTasks(updatedTasks)
     } catch (error) {
       console.error('Error fetching tasks:', error)
-      alert(`Error fetching tasks. Check console for details.`)
+      alert('Error fetching tasks. Check console for details.')
     } finally {
       setLoading(false)
     }
@@ -50,50 +63,51 @@ const TodoPage: React.FC = () => {
 
     try {
       const taskId = `task-${Date.now()}`
-      // Use manual expiry if provided, else default 24 hours
       const taskExpiry = expiryDate
         ? new Date(expiryDate).toISOString()
         : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/tasks`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${tokens.idToken}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens.idToken}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           TaskId: taskId,
           TaskName: newTask,
-          ExpiryDate: taskExpiry
-        })
+          ExpiryDate: taskExpiry,
+        }),
       })
 
       if (!response.ok) throw new Error('Failed to create task')
 
       setNewTask('')
-      setExpiryDate('') // reset manual expiry
+      setExpiryDate('')
       fetchTasks()
     } catch (error) {
       console.error('Error creating task:', error)
+      alert('Error creating task. Check console for details.')
     }
   }
 
   // Update task status
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: 'Pending' | 'Completed') => {
     if (!tokens?.idToken) return
     try {
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/tasks`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${tokens.idToken}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens.idToken}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ TaskId: taskId, Status: newStatus })
+        body: JSON.stringify({ TaskId: taskId, Status: newStatus }),
       })
       if (!response.ok) throw new Error('Failed to update task')
       fetchTasks()
     } catch (error) {
       console.error('Error updating task:', error)
+      alert('Error updating task. Check console for details.')
     }
   }
 
@@ -101,22 +115,23 @@ const TodoPage: React.FC = () => {
   const deleteTask = async (taskId: string) => {
     if (!tokens?.idToken) return
     try {
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`https://uy3cysk13j.execute-api.eu-central-1.amazonaws.com/dev/tasks`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${tokens.idToken}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${tokens.idToken}`,
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ TaskId: taskId })
+        body: JSON.stringify({ TaskId: taskId }),
       })
       if (!response.ok) throw new Error('Failed to delete task')
       fetchTasks()
     } catch (error) {
       console.error('Error deleting task:', error)
+      alert('Error deleting task. Check console for details.')
     }
   }
 
-  // Calculate remaining time in hours
+  // Calculate remaining hours
   const getRemainingHours = (expiryDate: string) => {
     const now = Date.now()
     const expiry = new Date(expiryDate).getTime()
